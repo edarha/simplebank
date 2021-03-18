@@ -2,9 +2,11 @@ package db
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestTransferTX(t *testing.T) {
@@ -13,13 +15,15 @@ func TestTransferTX(t *testing.T) {
 	acc1 := createRandomAccount(t)
 	acc2 := createRandomAccount(t)
 
+	fmt.Println(">>> before: ", acc1.Balance, acc2.Balance)
+
 	// run n concurrency transfer transaction
 	n := 5
 	amount := int64(10)
 
 	errs := make(chan error)
 	results := make(chan TransferTXResult)
-
+	existed := make(map[int]bool)
 	for i := 0; i < n; i++ {
 		go func() {
 			result, err := store.TransferTX(context.Background(), TransferTXParam{
@@ -76,5 +80,41 @@ func TestTransferTX(t *testing.T) {
 		assert.NoError(t, err)
 
 		// TODO: check account
+		// fromAccount
+		fromAccount := result.FromAccount
+		require.NotEmpty(t, fromAccount)
+		require.Equal(t, acc1.ID, fromAccount.ID)
+
+		// toAccount
+		toAccount := result.ToAccount
+		require.NotEmpty(t, toAccount)
+		require.Equal(t, acc2.ID, toAccount.ID)
+
+		fmt.Println(">>> tx: ", i, fromAccount.Balance, toAccount.Balance)
+		// check account's balance
+		diff1 := acc1.Balance - fromAccount.Balance
+		diff2 := toAccount.Balance - acc2.Balance
+
+		require.Equal(t, diff1, diff2)
+		require.True(t, diff1 > 0)
+
+		require.True(t, diff1%amount == 0) // amount, 2 * amount, 3 * amount, ..., n * amount
+
+		k := int(diff1 / amount)
+		require.True(t, k >= 1 && k <= n)
+		require.NotContains(t, existed, k)
+		existed[k] = true
 	}
+
+	// check the final updated balances
+	updatedAcct1, err := testQueries.GetAccount(context.Background(), acc1.ID)
+	require.NoError(t, err)
+	require.NotEmpty(t, updatedAcct1)
+
+	updatedAcct2, err := testQueries.GetAccount(context.Background(), acc2.ID)
+	require.NoError(t, err)
+	require.NotEmpty(t, updatedAcct2)
+	fmt.Println(">>>> after: ", updatedAcct1.Balance, updatedAcct2.Balance)
+	require.Equal(t, updatedAcct1.Balance+int64(n)*amount, acc1.Balance)
+	require.Equal(t, updatedAcct2.Balance-int64(n)*amount, acc2.Balance)
 }
