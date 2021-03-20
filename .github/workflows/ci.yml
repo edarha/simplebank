@@ -20,7 +20,7 @@ jobs:
         image: postgres
         # Provide the password for postgres
         env:
-          POSTGRES_HOST: simpleb_ank
+          POSTGRES_DB: simpleb_ank
           POSTGRES_USER: root
           POSTGRES_PASSWORD: secret
         # Set health checks to wait until postgres has started
@@ -29,6 +29,9 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
+        ports:
+          # Maps tcp port 5432 on service container to the host
+          - 5432:5432
 
     steps:
     - uses: actions/checkout@v2
