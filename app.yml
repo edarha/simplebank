@@ -1,0 +1,6 @@
+postgres:
+    driver: postgres
+    source: postgresql://root:secret@localhost:5432/simple_bank?sslmode=disable
+
+server:
+    address: 0.0.0.0:8080
