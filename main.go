@@ -15,7 +15,7 @@ func main() {
 	conf, err := util.LoadConfig(".")
 
 	if err != nil {
-		log.Panicf("Cannot load config ", err)
+		log.Panicf("Cannot load config %s", err)
 	}
 
 	util.Conf = conf
